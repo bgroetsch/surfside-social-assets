@@ -1,0 +1,118 @@
+name: Fetch asset from URL
+
+# Commits an image into this repo from a URL supplied in an issue, then replies
+# with the permanent GitHub Pages URL. Used by the weekly RE/MAX Surfside
+# Buffer automation, which cannot upload binaries to GitHub directly.
+#
+# Open an issue titled "[asset] ..." with a body containing:
+#   url: https://export-download.canva.com/....jpg
+#   path: remax-cards/2026-08-31/mls-261613.jpg
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  fetch:
+    if: github.event.issue.user.login == github.repository_owner && startsWith(github.event.issue.title, '[asset]')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Parse and validate request
+        id: req
+        env:
+          BODY: ${{ github.event.issue.body }}
+        run: |
+          set -euo pipefail
+          url=$(printf '%s\n' "$BODY" | sed -n 's/^[[:space:]]*url:[[:space:]]*//p' | head -n1 | tr -d '\r')
+          dest=$(printf '%s\n' "$BODY" | sed -n 's/^[[:space:]]*path:[[:space:]]*//p' | head -n1 | tr -d '\r')
+
+          if [ -z "$url" ] || [ -z "$dest" ]; then
+            echo "error=Missing a 'url:' or 'path:' line in the issue body." >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+
+          # Host allowlist. Prevents this workflow being used to fetch arbitrary URLs.
+          case "$url" in
+            https://export-download.canva.com/*) ;;
+            https://d36xftgacqn2p.cloudfront.net/*) ;;
+            *)
+              echo "error=Host not allowed. Permitted: export-download.canva.com, d36xftgacqn2p.cloudfront.net" >> "$GITHUB_OUTPUT"
+              exit 1 ;;
+          esac
+
+          # Path must stay inside the repo and be an image.
+          case "$dest" in
+            *..*|/*|*\\*)
+              echo "error=Unsafe path: $dest" >> "$GITHUB_OUTPUT"
+              exit 1 ;;
+          esac
+          if ! printf '%s' "$dest" | grep -Eq '^[A-Za-z0-9][A-Za-z0-9._/-]*\.(jpg|jpeg|png|webp)$'; then
+            echo "error=Path must be a relative .jpg, .jpeg, .png or .webp file. Got: $dest" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "dest=$dest" >> "$GITHUB_OUTPUT"
+
+      - name: Download asset
+        env:
+          URL: ${{ steps.req.outputs.url }}
+          DEST: ${{ steps.req.outputs.dest }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$(dirname "$DEST")"
+          curl -sSL --proto '=https' --max-time 60 --max-filesize 26214400 -o "$DEST" "$URL"
+          mime=$(file -b --mime-type "$DEST")
+          case "$mime" in
+            image/jpeg|image/png|image/webp) ;;
+            *)
+              echo "Downloaded file is not an image. Detected: $mime"
+              exit 1 ;;
+          esac
+          ls -l "$DEST"
+
+      - name: Commit
+        env:
+          DEST: ${{ steps.req.outputs.dest }}
+          NUM: ${{ github.event.issue.number }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$DEST"
+          if git diff --cached --quiet; then
+            echo "Identical file already present, nothing to commit."
+          else
+            git commit -m "Add $DEST (issue #$NUM)"
+            git push
+          fi
+
+      - name: Reply with permanent URL
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DEST: ${{ steps.req.outputs.dest }}
+          NUM: ${{ github.event.issue.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          owner="${REPO%%/*}"
+          name="${REPO##*/}"
+          pages="https://${owner}.github.io/${name}/${DEST}"
+          gh issue comment "$NUM" --body "$(printf 'ASSET_READY\n%s' "$pages")"
+          gh issue close "$NUM"
+
+      - name: Report failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NUM: ${{ github.event.issue.number }}
+          ERR: ${{ steps.req.outputs.error }}
+        run: |
+          gh issue comment "$NUM" --body "$(printf 'ASSET_FAILED\n%s' "${ERR:-See the workflow run log for details.}")"
