@@ -43,7 +43,7 @@ All text is plain text (no HTML). Missing optional fields are simply left off th
 | `star` | f1: optional 1-2 word starburst (`OCEAN\nVIEW`, `POOL`). Omit unless true. |
 | `panel` | f7: `{"big": "2", "text": "LOTS\nAVAILABLE"}` when there aren't 2 inset photos. |
 | `note_box` | f7: `{"label": "Minutes to", "text": "..."}` filler box when there aren't 2 inset photos. |
-| `agents` | Listings: `[{"name","phone","email","headshot"}]`. First agent's phone and email are shown. Add a second agent only if they are with REMAX Surfside. Leave `headshot` off when the agent's headshot doesn't meet the minimum. |
+| `agents` | Listings: `[{"name","phone","email","headshot"}]`. Add a second agent only if they are with REMAX Surfside. Leave `headshot` off when the agent's headshot doesn't meet the minimum. With one agent (or only the first agent has a phone), that agent's phone and email are shown. **When two agents each have a `phone`, every template shows each agent's name with their own phone directly under it** (rule set by Brian 2026-11-09, e.g. Brian Groetsch and Christine Rothwell co-listings); templates that show an email show the first agent's email once, on its own line. So always include each in-office co-agent's own phone from agent_roster.csv. |
 | `booking` | Rentals (optional): `{"label": "BOOK YOUR STAY", "site": "SurfsideCapeMay.com", "note": "Photos, rates & live calendar"}`. These are the defaults. |
 
 Every card automatically carries the REMAX Surfside lighthouse logo, office address, "Each Office Independently Owned and Operated" and the office phone 609-884-4242 at 42px. The renderer refuses any card where an agent phone is not smaller than the office phone.

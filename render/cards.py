@@ -94,6 +94,30 @@ def agent_phone(c):
     return a[0].get("phone", "") if a else ""
 
 
+def duo(c):
+    """True when two or more agents each have their own phone. Each agent's own
+    phone then goes directly under that agent's name (Brian's rule, 2026-11-09)."""
+    return sum(1 for a in agents(c) if a.get("phone")) > 1
+
+
+def agent_stack(c, name_css, phone_css, direction="row", gap=30, upper=False, email_css=None, align="left"):
+    """Per-agent name with that agent's phone underneath. direction 'row' puts the
+    agents side by side, 'col' stacks them. The primary agent's email (if any)
+    follows on its own line when email_css is given."""
+    cols = []
+    for a in agents(c):
+        n = e(a["name"]).upper() if upper else e(a["name"])
+        ph = f'<div class="agent-phone fit" style="{phone_css};max-width:100%">{e(a["phone"])}</div>' if a.get("phone") else ""
+        cols.append(f'<div style="min-width:0;flex:0 1 auto;text-align:{align}"><div class="fit" style="{name_css};max-width:100%">{n}</div>{ph}</div>')
+    jc = {"left": "flex-start", "right": "flex-end", "center": "center"}[align]
+    wrap = (f'<div style="display:flex;flex-direction:{"row" if direction == "row" else "column"};gap:{gap}px;'
+            f'justify-content:{jc};align-items:{"flex-start" if direction == "row" else "stretch"};min-width:0;max-width:100%">{"".join(cols)}</div>')
+    em = agents(c)[0].get("email") if agents(c) else None
+    if email_css and em:
+        wrap += f'<div class="fit" style="{email_css};max-width:100%">{e(em)}</div>'
+    return wrap
+
+
 def heads(c, size, ring, overlap=0.2):
     """Headshot circles for every agent that has one. ring = CSS box-shadow/border."""
     out, first = [], True
@@ -149,8 +173,9 @@ def f1(c):
         h = heads(c, 170 if len(agents(c)) == 1 else 140, "border:7px solid #fff;box-shadow:0 0 0 5px var(--blue),0 14px 30px rgba(0,0,0,.25)", 0.15)
         contact = f'''<div style="display:flex;justify-content:center">{h}</div>
     <div style="font:400 40px/1 Kaushan;color:var(--red);margin-top:16px">Call</div>
-    <div class="fit2" style="font:700 30px/1.15 Montserrat;color:var(--navy);max-height:72px">{e(agent_names(c))}</div>
-    <div class="agent-phone" style="font:800 {AGENT_PHONE_PX}px/1.2 Montserrat;color:var(--ink);margin-top:4px">{e(agent_phone(c))}</div>'''
+    {agent_stack(c, "font:700 26px/1.15 Montserrat;color:var(--navy)", f"font:800 {min(26, AGENT_PHONE_PX)}px/1.2 Montserrat;color:var(--ink);margin-top:2px", direction="col", gap=10, align="center") if duo(c) else
+     f'''<div class="fit2" style="font:700 30px/1.15 Montserrat;color:var(--navy);max-height:72px">{e(agent_names(c))}</div>
+    <div class="agent-phone" style="font:800 {AGENT_PHONE_PX}px/1.2 Montserrat;color:var(--ink);margin-top:4px">{e(agent_phone(c))}</div>'''}'''
     return f"""<div class="card" style="background:#fff">
   <div class="ph" style="position:absolute;inset:0 0 auto 0;height:700px;{bg(photo(c, 0), c.get('hero_pos', 'center 60%'))}"></div>
   <div style="position:absolute;inset:0 0 auto 0;height:260px;background:linear-gradient(180deg,rgba(3,19,56,.55),rgba(3,19,56,0))"></div>
@@ -211,8 +236,9 @@ def f2(c):
     else:
         h = heads(c, 128, "box-shadow:0 0 0 5px #fff,0 0 0 8px var(--blue)", 0.2)
         contact = f'''{h}<div style="flex:1;min-width:0"><div style="font:400 30px/1 Kaushan;color:var(--red)">Listed by</div>
-      <div class="fit" style="font:700 36px/1.1 Playfair;color:var(--navy);max-width:760px">{e(agent_names(c))}</div>
-      <div class="agent-phone fit" style="font:600 {min(24, AGENT_PHONE_PX)}px/1.4 Montserrat;color:var(--ink);max-width:760px">{e(agent_phone(c))}{(" &nbsp;|&nbsp; " + e(agents(c)[0].get("email"))) if agents(c)[0].get("email") else ""}</div></div>'''
+      {agent_stack(c, "font:700 32px/1.1 Playfair;color:var(--navy)", f"font:600 {min(24, AGENT_PHONE_PX)}px/1.4 Montserrat;color:var(--ink)", email_css="font:500 20px/1.4 Montserrat;color:var(--ink)") if duo(c) else
+       f'''<div class="fit" style="font:700 36px/1.1 Playfair;color:var(--navy);max-width:760px">{e(agent_names(c))}</div>
+      <div class="agent-phone fit" style="font:600 {min(24, AGENT_PHONE_PX)}px/1.4 Montserrat;color:var(--ink);max-width:760px">{e(agent_phone(c))}{(" &nbsp;|&nbsp; " + e(agents(c)[0].get("email"))) if agents(c)[0].get("email") else ""}</div>'''}</div>'''
     return f"""<div class="card" style="background:#fff">
   <div style="height:178px;display:flex;align-items:center;justify-content:space-between;gap:30px;padding:0 48px">
     <div class="logo" style="width:250px;height:110px;flex:none"></div>
@@ -245,8 +271,9 @@ def f3(c):
         a0 = agents(c)[0]
         contact = f'''{h}<div style="color:#fff;min-width:0">
       <div style="font:600 18px/1 Montserrat;letter-spacing:5px;color:#f3dcc0">PRIVATE SHOWINGS</div>
-      <div class="fit" style="font:400 42px/1.15 DMSerif;max-width:800px">{e(agent_names(c))}</div>
-      <div class="agent-phone fit" style="font:500 {min(25, AGENT_PHONE_PX)}px/1.3 Montserrat;max-width:800px">{e(a0.get("phone", ""))}{(" &nbsp;|&nbsp; " + e(a0.get("email"))) if a0.get("email") else ""}</div></div>'''
+      {agent_stack(c, "font:400 36px/1.15 DMSerif", f"font:500 {min(25, AGENT_PHONE_PX)}px/1.3 Montserrat", email_css="font:500 20px/1.35 Montserrat") if duo(c) else
+       f'''<div class="fit" style="font:400 42px/1.15 DMSerif;max-width:800px">{e(agent_names(c))}</div>
+      <div class="agent-phone fit" style="font:500 {min(25, AGENT_PHONE_PX)}px/1.3 Montserrat;max-width:800px">{e(a0.get("phone", ""))}{(" &nbsp;|&nbsp; " + e(a0.get("email"))) if a0.get("email") else ""}</div>'''}</div>'''
     stats = "<br>".join(filter(None, [stats_text(c), e(c.get("stats_line2", ""))]))
     price = f'<div class="fit" style="font:600 68px/1 Playfair;max-width:560px;flex:none">{e(c["price"])}</div><div style="height:56px;width:2px;background:rgba(255,255,255,.5);flex:none"></div>' if c.get("price") else ""
     return f"""<div class="card" style="background:var(--deep)">
@@ -286,7 +313,8 @@ def f4(c):
     else:
         h = heads(c, 116, "border:5px solid #fff", 0.2)
         contact = f'''{h}<div style="min-width:0"><div style="font:600 21px/1 Montserrat;letter-spacing:4px;color:#cfe0ff">CALL OR TEXT</div>
-      <div class="fit" style="font:800 40px/1.05 Barlow;max-width:780px">{e(agent_names(c)).upper()}</div><div class="agent-phone" style="font:700 {AGENT_PHONE_PX}px/1.2 Montserrat">{e(agent_phone(c))}</div></div>'''
+      {agent_stack(c, "font:800 36px/1.05 Barlow", f"font:700 {AGENT_PHONE_PX}px/1.2 Montserrat", upper=True) if duo(c) else
+       f'''<div class="fit" style="font:800 40px/1.05 Barlow;max-width:780px">{e(agent_names(c)).upper()}</div><div class="agent-phone" style="font:700 {AGENT_PHONE_PX}px/1.2 Montserrat">{e(agent_phone(c))}</div>'''}</div>'''
     return f"""<div class="card" style="background:var(--blue)">
   <div style="position:absolute;inset:0;background:radial-gradient(circle at 85% 8%,rgba(255,255,255,.18),transparent 45%),repeating-linear-gradient(135deg,rgba(255,255,255,.05) 0 2px,transparent 2px 22px)"></div>
   <div style="position:absolute;left:48px;top:40px;color:#fff;width:600px">
@@ -320,8 +348,9 @@ def f5(c):
         h = heads(c, 92, "box-shadow:0 0 0 3px var(--cream),0 0 0 5px var(--ink)", 0.2)
         a0 = agents(c)[0]
         contact = f'''{h or '<div style="font:700 17px/1.2 Montserrat;letter-spacing:5px;color:var(--red);flex:none">LISTED BY</div>'}
-    <div style="flex:1;min-width:0"><div class="fit" style="font:400 38px/1.1 DMSerif;max-width:760px">{e(agent_names(c))}</div>
-      <div class="agent-phone fit" style="font:600 {min(21, AGENT_PHONE_PX)}px/1.4 Montserrat;max-width:760px">{e(a0.get("phone", ""))}{(" &nbsp;|&nbsp; " + e(a0.get("email"))) if a0.get("email") else ""}</div></div>'''
+    <div style="flex:1;min-width:0">{agent_stack(c, "font:400 34px/1.1 DMSerif", f"font:600 {min(21, AGENT_PHONE_PX)}px/1.4 Montserrat", email_css="font:500 18px/1.4 Montserrat") if duo(c) else
+      f'''<div class="fit" style="font:400 38px/1.1 DMSerif;max-width:760px">{e(agent_names(c))}</div>
+      <div class="agent-phone fit" style="font:600 {min(21, AGENT_PHONE_PX)}px/1.4 Montserrat;max-width:760px">{e(a0.get("phone", ""))}{(" &nbsp;|&nbsp; " + e(a0.get("email"))) if a0.get("email") else ""}</div>'''}</div>'''
     return f"""<div class="card" style="background:var(--cream)">
   <div style="position:absolute;inset:34px 34px 124px;border:2px solid var(--ink);border-bottom:0"></div>
   <div style="position:absolute;left:62px;right:62px;top:62px;display:flex;justify-content:space-between;align-items:center;gap:20px">
@@ -358,8 +387,9 @@ def f6(c):
     else:
         h = heads(c, 100, "box-shadow:0 0 0 4px #fff,0 0 0 7px var(--red)", 0.22)
         a0 = agents(c)[0]
-        contact = f'''{h}<div style="flex:1;min-width:0"><div class="fit" style="font:400 36px/1 Bebas;color:var(--navy);letter-spacing:1px;max-width:780px">{e(agent_names(c)).upper()}</div>
-      <div class="agent-phone fit" style="font:600 {min(22, AGENT_PHONE_PX)}px/1.4 Montserrat;max-width:780px">{e(a0.get("phone", ""))}{(" &nbsp;|&nbsp; " + e(a0.get("email"))) if a0.get("email") else ""}</div></div>'''
+        contact = f'''{h}<div style="flex:1;min-width:0">{agent_stack(c, "font:400 34px/1 Bebas;color:var(--navy);letter-spacing:1px", f"font:600 {min(22, AGENT_PHONE_PX)}px/1.4 Montserrat", upper=True, email_css="font:500 18px/1.4 Montserrat") if duo(c) else
+      f'''<div class="fit" style="font:400 36px/1 Bebas;color:var(--navy);letter-spacing:1px;max-width:780px">{e(agent_names(c)).upper()}</div>
+      <div class="agent-phone fit" style="font:600 {min(22, AGENT_PHONE_PX)}px/1.4 Montserrat;max-width:780px">{e(a0.get("phone", ""))}{(" &nbsp;|&nbsp; " + e(a0.get("email"))) if a0.get("email") else ""}</div>'''}</div>'''
     inset = photo(c, 1)
     return f"""<div class="card" style="background:#fff">
   <div class="ph" style="position:absolute;left:0;top:0;width:610px;height:860px;{bg(photo(c, 0), c.get('hero_pos', '42% 50%'))}"></div>
@@ -407,7 +437,10 @@ def f7(c):
         contact = f'<div style="text-align:right;font:600 22px/1.25 Montserrat">{e(b["label"].title())}<br><span class="fit" style="display:inline-block;font:700 28px/1.2 Montserrat;max-width:520px">{e(b["site"])}</span></div>'
     else:
         h = heads(c, 76, "border:3px solid #fff", 0.21)
-        contact = f'{h}<div style="text-align:right;font:600 22px/1.25 Montserrat;min-width:0"><span class="fit" style="display:inline-block;max-width:470px">{e(agent_names(c))}</span><br><span class="agent-phone" style="font:700 {min(26, AGENT_PHONE_PX)}px/1.2 Montserrat">{e(agent_phone(c))}</span></div>'
+        if duo(c):
+            contact = f'{h}<div style="min-width:0;max-width:520px">{agent_stack(c, "font:600 22px/1.25 Montserrat", f"font:700 {min(26, AGENT_PHONE_PX)}px/1.2 Montserrat", gap=24, align="right")}</div>'
+        else:
+            contact = f'{h}<div style="text-align:right;font:600 22px/1.25 Montserrat;min-width:0"><span class="fit" style="display:inline-block;max-width:470px">{e(agent_names(c))}</span><br><span class="agent-phone" style="font:700 {min(26, AGENT_PHONE_PX)}px/1.2 Montserrat">{e(agent_phone(c))}</span></div>'
     return f"""<div class="card" style="background:var(--deep)">
   <div style="position:absolute;left:0;right:0;top:0;height:176px;padding:36px 48px 0">
     <div class="fit" style="display:inline-block;max-width:984px;background:var(--red);color:#fff;font:700 21px/1 Montserrat;letter-spacing:5px;padding:11px 16px">{e(c.get('badge', '')).upper()}</div>
