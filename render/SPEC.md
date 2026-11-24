@@ -15,6 +15,10 @@ Open an issue in this repo titled `[render] <short description>` whose body is o
 - `scheme`: `classic`, `reverse`, `midnight`, `harbor`.
 - `path`: `remax-cards/<post date>/mls-<mls>-<template>-<scheme>.jpg` for sale listings, `rental-cards/<post date>/rental-<property id>-<template>-<scheme>.jpg` for vacation rentals. The template and scheme in the file name let the next run see what was used recently.
 
+## Holiday and community cards (h1)
+
+`template: "h1"`, `card.kind: "holiday"`, `path: holiday-cards/<post date>/<slug>-h1.jpg`. Full-bleed photo with a short centered greeting at the top and the standard office footer; no agent, price or stats. Fields: `photos` (one image; Runway-generated images from dnznrvs05pmza.cloudfront.net are allowed), `kicker` (optional small line above), `headline` (a few words, e.g. `Happy Thanksgiving`), `tagline` (optional italic line below), `hero_pos` (optional). Never put a landmark name or a fact on the card that isn't true of the photo. Template code: render/holiday.py.
+
 ## card fields
 
 All text is plain text (no HTML). Missing optional fields are simply left off the card. Never put a fact on a card that isn't in the source data.

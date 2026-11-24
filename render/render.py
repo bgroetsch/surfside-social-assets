@@ -12,10 +12,14 @@ from urllib.parse import urlparse
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 import cards  # noqa: E402
+import holiday  # noqa: E402
+
+cards.TEMPLATES["h1"] = holiday.h1   # holiday / community card
 
 ALLOWED_IMAGE_HOSTS = {"d36xftgacqn2p.cloudfront.net", "d2td4dobkk213c.cloudfront.net",
-                       "realtimerental.com", "www.realtimerental.com", "bgroetsch.github.io"}
-PATH_RE = re.compile(r"^(remax-cards|rental-cards)/\d{4}-\d{2}-\d{2}/[A-Za-z0-9][A-Za-z0-9._-]*\.jpg$")
+                       "realtimerental.com", "www.realtimerental.com", "bgroetsch.github.io",
+                       "dnznrvs05pmza.cloudfront.net"}  # last: Runway-generated images (h1 cards)
+PATH_RE = re.compile(r"^(remax-cards|rental-cards|holiday-cards)/\d{4}-\d{2}-\d{2}/[A-Za-z0-9][A-Za-z0-9._-]*\.jpg$")
 
 FIT_JS = """
 () => {
@@ -87,8 +91,8 @@ def validate(spec):
         host = urlparse(u).hostname or ""
         if not u.startswith("https://") or host not in ALLOWED_IMAGE_HOSTS:
             fail(f"Image host not allowed: {u}")
-    if c.get("kind") != "rental" and not c.get("agents"):
-        fail("A listing card needs card.agents (set card.kind to 'rental' for rentals).")
+    if c.get("kind") not in ("rental", "holiday") and not c.get("agents"):
+        fail("A listing card needs card.agents (set card.kind to 'rental' for rentals, 'holiday' for h1 cards).")
 
 
 def render(spec, out, font_css=None, url_map=None):
